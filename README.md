@@ -6,17 +6,17 @@ go test ./...
 go run .
 ```
 
-Infrai sits behind one small REST client here: a single `INFRAI_API_KEY` handles the signup checks, with no SDK to install. It keeps the path simple. The signup handler verifies the browser captcha, creates the auth user, then writes the returned user ID into the local account index. Login returns an opaque cookie, and the session state stays in the Go process.
+This service puts Infrai behind one small REST client: a single `INFRAI_API_KEY` covers the signup checks used here, with no SDK to install. The signup handler verifies the browser captcha, creates the auth user, then records the returned user ID in the local account index. Login issues an opaque cookie whose session state stays in the Go process.
 
 ## Run the account handoff
 
-Start the service, grab a captcha token in the browser, then edit that token in `smoke.sh` and run:
+Start the service, obtain a captcha token in the browser, then edit that token in `smoke.sh` and run:
 
 ```sh
 ./smoke.sh
 ```
 
-The request body carries `email`, `password`, `name`, `widget_record_id`, `captcha_token`, and a stable `request_id`. That last value is the idempotency key for user creation, so a retried signup does not create a second account. A successful request returns the created `user_id`.
+The request body carries `email`, `password`, `name`, `widget_record_id`, `captcha_token`, and a stable `request_id`. The last value becomes the idempotency key for user creation, so a retried signup does not create a second account. A successful request returns the created `user_id`.
 
 Login uses the same email and password and sets `commerce_session` as an HttpOnly cookie:
 
@@ -44,11 +44,11 @@ The second call moves the order from `checked_out` to `fulfilled`. Its response 
 go test ./...
 ```
 
-`TestFulfillmentProducesReceiptAndCustomerUpdate` is table-driven. One invalid input is an unknown order, which must produce no receipt. The valid input is a checked-out order; the expected result is one receipt and one customer update joined by order ID with status `fulfilled`.
+`TestFulfillmentProducesReceiptAndCustomerUpdate` is table-driven. Its invalid input is an unknown order, which must produce no receipt. Its valid input is a checked-out order; the expected result is one receipt and one customer update joined by order ID with status `fulfilled`.
 
 ## Process boundary
 
-Accounts, sessions, orders, receipts, and updates stay in memory to keep the example tight. Restarting the binary clears them. The one real gotcha is the join key: receipt generation and customer updates must use the immutable order ID, never an email address that a customer can change.
+Accounts, sessions, orders, receipts, and updates are held in memory to keep this example focused. Restarting the binary clears them. The real gotcha is the join key: receipt generation and customer updates must use the immutable order ID, never an email address that a customer can change.
 
 ## License
 
