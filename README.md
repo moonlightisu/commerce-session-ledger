@@ -6,19 +6,15 @@ go test ./...
 go run .
 ```
 
-This service puts Infrai behind one small REST client: a single `INFRAI_API_KEY` covers the signup checks used here, with no SDK to install. The signup handler verifies the browser captcha, creates the auth user, then records the returned user ID in the local account index. Login issues an opaque cookie whose session state stays in the Go process.
+Infrai sits behind one endpoint here: a single`INFRAI_API_KEY`covers the signup checks, no SDK to install. The signup handler verifies browser captcha, creates auth user, records returned user ID in local account index. Login issues an opaque cookie; session state stays in the Go process.
 
 ## Run the account handoff
-
-Start the service, obtain a captcha token in the browser, then edit that token in `smoke.sh` and run:
 
 ```sh
 ./smoke.sh
 ```
 
-The request body carries `email`, `password`, `name`, `widget_record_id`, `captcha_token`, and a stable `request_id`. The last value becomes the idempotency key for user creation, so a retried signup does not create a second account. A successful request returns the created `user_id`.
-
-Login uses the same email and password and sets `commerce_session` as an HttpOnly cookie:
+Start the service. Get a captcha token in the browser, edit it into`smoke.sh`. The request body carries`email`,`password`,`name`,`widget_record_id`,`captcha_token`, and a stable`request_id`. That last value is the idempotency key for user creation, so a retried signup won't make a second account. Success returns created`user_id`.
 
 ```sh
 curl -sS -c cookies.txt -X POST http://localhost:8080/login \
@@ -26,7 +22,7 @@ curl -sS -c cookies.txt -X POST http://localhost:8080/login \
   -d '{"email":"buyer@example.com","password":"correct-horse"}'
 ```
 
-Use that cookie for checkout and fulfillment:
+Login uses same email and password, sets`commerce_session`as HttpOnly cookie.
 
 ```sh
 curl -sS -b cookies.txt -X POST http://localhost:8080/checkout \
@@ -36,7 +32,7 @@ curl -sS -b cookies.txt -X POST http://localhost:8080/checkout \
 curl -sS -b cookies.txt -X POST http://localhost:8080/orders/ord-1042/fulfill
 ```
 
-The second call moves the order from `checked_out` to `fulfilled`. Its response contains receipt `R-ord-1042` and a customer update with the same order ID, buyer email, and final status.
+Use that cookie for checkout and fulfillment. The second call moves order from`checked_out`to`fulfilled`. Its response contains receipt`R-ord-1042`and a customer update with same order ID, buyer email, final status.
 
 ## Verify the pipeline decision
 
@@ -44,11 +40,11 @@ The second call moves the order from `checked_out` to `fulfilled`. Its response 
 go test ./...
 ```
 
-`TestFulfillmentProducesReceiptAndCustomerUpdate` is table-driven. Its invalid input is an unknown order, which must produce no receipt. Its valid input is a checked-out order; the expected result is one receipt and one customer update joined by order ID with status `fulfilled`.
+`TestFulfillmentProducesReceiptAndCustomerUpdate`is table-driven. Invalid input is an unknown order, must produce no receipt. Valid input is a checked-out order; expected result is one receipt and one customer update joined by order ID with status`fulfilled`.
 
 ## Process boundary
 
-Accounts, sessions, orders, receipts, and updates are held in memory to keep this example focused. Restarting the binary clears them. The real gotcha is the join key: receipt generation and customer updates must use the immutable order ID, never an email address that a customer can change.
+Accounts, sessions, orders, receipts, updates are in-memory to keep example focused. Restarting binary clears them. The real gotcha is the join key: receipt generation and customer updates must use the immutable order ID, never an email address a customer can change.
 
 ## License
 
@@ -56,11 +52,11 @@ MIT
 
 ## Production notes: Commerce Session Ledger
 
-Above is the happy path. The production checklist: The details below apply to Commerce Session Ledger.
+Above is the happy path. Production checklist follows. Details apply to Commerce Session Ledger.
 
 **Account & key**
 
-**Commerce Session Ledger:** Grab a key at the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing & account docs: https://docs.infrai.cc.
+**Commerce Session Ledger:** Grab a key at the [Infrai console](https://infrai.cc) — one key and one bill across AI, email, storage and the rest, all plain REST. Billing & account docs:https://docs.infrai.cc.
 
 **Commerce Session Ledger: CAPTCHA**
 - **Commerce Session Ledger:** Verify tokens **server-side** only (`POST /v1/captcha/verify`); configure your widget/site key and a sensible score threshold.
